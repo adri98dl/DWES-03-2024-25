@@ -85,10 +85,28 @@ Para ello, ee proporciona el método doGet de un servlet.
 
 ### Pasos
 1. Crea un proyecto llamado **webapp-ut03** con el que vamos a trabajar en esta unidad de trabajo.
-2. Crea un servlet al que vas a añadir el código del método GET. El url pattern del dicho servlet será **cabeceras-request**
-3. Ejecuta el servlet y observa lo que recibes por pantalla.
-4. Mejora tu aplicación web incluyendo JSP.
-5. Después aprenderás a usar JSTL para mejorar tu página JSP. 
+2. Crea la siguiente página index.html:
+```
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UT03</title>
+</head>
+<body>
+    <h1>TRABAJANDO CON CABECERAS HTTP</h1>
+    <p><a href="cabeceras-request-jsp">Obtener información de la cabecera HTTP (request)</a></p>
+    <p><a href="productos.xls">Exportar a XLS</a></p>
+    <p><a href="productos.html">Exportar a HTML</a></p>
+    <p><a href="productos.json">Exportar a JSON</a></p>
+</body>
+</html>
+```
+4. Crea un servlet al que vas a añadir el código del método GET. El url pattern del dicho servlet será **cabeceras-request**
+5. Ejecuta el servlet y observa lo que recibes por pantalla.
+6. Mejora tu aplicación web incluyendo JSP.
+7. (??????) Después aprenderás a usar JSTL para mejorar tu página JSP. 
 
 # Ejercicio 2: cabeceras HTTP del response
 
@@ -141,7 +159,7 @@ Si queremos trabajar con xsl de una forma más compleja debemos utilizar una API
 
 1. Creamos clase Producto.
 2. Creamos los servicios ProductoService (interface) y ProductoServiceImpl con datos fijos, no cogidos de una base de datos.
-3. Creamos el controlador, ProductoXlsServlet.
+3. Creamos el controlador, ProductoXslServlet.
 4. En el navegador ponemos la ruta al servlet con la extensión xsl y por código detecta que va a generar un xsl en vez de un html:
 @WebServlet({"/productos.xls", "/productos.html", "/productos"})
 
@@ -200,26 +218,205 @@ ___
 
 Para verificar en linux la arquitectura (x64 o arm64) usamos el comando: uname -m
 
+___
 
-#### Para probar el método post:
+#### PARA PROBAR EL MÉTODO POST, VAMOS A ENVIAR UN JSON DE LA SIGUIENTE MANERA:
 
-![image](https://github.com/user-attachments/assets/0f27c351-506a-4cda-ac03-094819f05c9d)
+![image](https://github.com/user-attachments/assets/f8a271da-d705-4c3f-8f4a-020dfa6624f6)
+
+El objetivo de este ejercicio es trabajar como servicios API Rest con Servlets, tanto para listar o consultar con GET, como para enviar y guardar con POST.
+
+
+___
+Aquí hay un ejemplo de JSON para probar:
+
+```
+{
+  "id": 4,
+  "nombre": "disco ssd",
+  "tipo": "informática",
+  "precio": 600
+}
+```
+
+Ten cuidado con el charset. Añade UTF-8 en el content-type para que se vean bien las eñes y acentos:
+
+```
+resp.setContentType("application/json;charset=UTF-8");
+```
+
+![image](https://github.com/user-attachments/assets/5c9bb60d-4e4c-4734-be25-da1f77aeecac)
+
+
+
+### AMPLIACIÓN. Enviar Json con array de objetos producto
+
+Observa la siguiente captura:
+
+![image](https://github.com/user-attachments/assets/33a26559-4706-4a61-9215-ee80f2642b78)
+
+Crea un nuevo servlet que reciba un json con un array de objetos producto y devuelva una página html con esa información.
+
+Usa este código para mappear un array de objetos con Jackson:
+
+```
+List<Producto> productos = mapper.readValue(jsonStream, new TypeReference<List<Producto>>() {});
+```
+
+# Ejercicio 3: mostrar la hora actualizada
+
+![image](https://github.com/user-attachments/assets/4bb939f1-6a94-4ce9-b9c6-962fbddd505c)
+
+Crearemos un nuevo servlet llamado **HoraActualizadaServlet**
+
+En él aprenderemos a usar el siguiente código:
+
+```
+        resp.setHeader("refresh", "1");
+        LocalTime hora = LocalTime.now();
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("hh:mm:ss");
+
+        ...
+
+        hora.format(df)
+
+```
+
+# Ejercicio 4: sendRedirect vs Dispatcher forward
+
+Vamos a aprender a redirigir de diferentes maneras:
+
+## Redirigir a una URL externa o cambiar la URL en el navegador
+
+```
+@WebServlet("/redirigir")
+public class RedirigirServlet extends HttpServlet {
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // Forma 1:
+        //resp.setHeader("Location", req.getContextPath() + "/productos");
+        //resp.setStatus(HttpServletResponse.SC_FOUND);
+
+        // Forma 2: (mejor)        
+        resp.sendRedirect(req.getContextPath() + "/productos");
+    }
+}
+```
+
+## Unir el request actual a otro servlet o jsp. Seguimos con el mismo request. No cambia la URL
+
+```
+@WebServlet("/despachar")
+public class DespacharServlet extends HttpServlet {
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // Forma 1 (recomendado)
+        getServletContext().getRequestDispatcher("/productos").forward(req, resp);
+
+        // Forma 2
+        request.getRequestDispatcher("/productos").forward(req, resp);
+
+    }
+}
+
+```
+
+# Ejercicio 5: códigos de estado de respuesta HTTP
+
+https://developer.mozilla.org/es/docs/Web/HTTP/Status
 
 ___
 
-![image](https://github.com/user-attachments/assets/ce7eeb44-ecab-4fd1-bf3e-8b82489e926c)
+## Ejercicio 5.1: i probramos los servlets del ejercicio 4 e inspeccionamos la red, podemos observar los códigos de estado de respuesta:
+
+![image](https://github.com/user-attachments/assets/3e47b9f9-5725-4aef-a822-f3fc9e0c708b)
+
+
+**302: Found:** Este código de respuesta significa que el recurso de la URI solicitada ha sido cambiado temporalmente.
+
+**200: OK:** La solicitud ha tenido éxito.
 
 ___
 
-![image](https://github.com/user-attachments/assets/db577665-3ece-411b-9b65-b4a2859f9912)
+## Ejercicio 5.2: vamos a crear un **LoginServlet** que simula el login de un usuario.
+
+En el caso de que no coincida con unos valores constantes, deberá devolver un código de error 401 como que no está autorizado.
+
+Aquí tienes código que te servirá de ayuda:
+
+```
+    final static String USERNAME = "admin";
+    final static String PASSWORD = "12345";
+    ...
+
+    resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Lo sentimos no esta autorizado para ingresar a esta página!");
 
 
-Esto ha servido como práctica resumen para trabajar con servicios API Rest con Servlets, tanto para listar o consultar con GET, como para enviar y guardar con POST.
+```
+
+Crea una página **login.html** con un formulario que use el método post para enviar un login y password de usuario.
+
+Si introducimos mal el login y password se monstrará el error en el navegador:
+
+![image](https://github.com/user-attachments/assets/9328e741-8e90-4459-8849-eb8667666595)
+
+Si coinciden, aparecerá un página html con el mensaje de éxito:
+
+![image](https://github.com/user-attachments/assets/76f01e80-dbb6-4ed7-98e7-8ad3e7d8a10c)
+
+___
+
+## Ejercicio 5.3: buscar producto. En el caso de que no se encuentre devolveremos un Status HTTP Response 404
+
+Usaremos el siguiente código de estado:
+
+```
+HttpServletResponse.SC_NOT_FOUND
+```
 
 
+Implementa el servlet **BuscarProductoServlet**.
+
+La acción doPost debe obtener el parámetro nombre del request, realizar la búsqueda mediante el service (ProductoServiceImpl) y devolver el resultado como un Optional.
+
+La búsqueda se debe implementar en un nuevo método de la interface ProductoService e implementarlo en la clase ProductoServiceImpl usando el api stream de java 8, este nuevo método se debe llamar buscarProducto con la siguiente firma:
+
+```
+Optional<Producto> buscarProducto(String nombre);
+```
+___
+
+**Observa el siguiente código que te servirá de ayuda:**
+
+```
+        Optional<Producto> encontrado = service.listar().stream().filter(p -> {
+            return p.getNombre().contains(nombre);
+        }).findFirst();
+
+        ...
+        if (encontrado.isPresent()) {
+            // ....
+        }
+```
+
+**Explicación del código:**
+
+- service.listar().stream(): Se asume que service.listar() devuelve una lista de Producto. stream() convierte esta lista en un flujo (stream) de datos, permitiendo aplicar operaciones funcionales como filter.
+- filter(p -> { ... }): filter es una operación intermedia del stream que permite seleccionar solo aquellos elementos que cumplan con una condición. La condición se define en el bloque de código { ... }. En este caso, p -> { ... } es una expresión lambda donde p representa cada objeto Producto en el flujo.
+- return p.getNombre().contains(nombre);: Si nombre no es null ni está en blanco, se verifica si el nombre del producto (p.getNombre()) contiene el valor de nombre. Solo los productos que cumplan esta condición serán incluidos en el filtrado.
+- findFirst(): Esta operación terminal del stream devuelve el primer elemento que cumple con la condición del filtro. El resultado es un Optional<Producto>, lo que significa que el valor puede ser un Producto si existe algún elemento que cumpla con el filtro, o Optional.empty() si no se encontró ninguno.
+- encontrado.isPresent(): Esta es una llamada al método isPresent() del Optional. Este método devuelve true si encontrado contiene un valor (es decir, si se encontró un producto que cumple con la condición); de lo contrario, devuelve false.
+___
+
+**AMPLIACIÓN!!!** Haz las modificaciones oportunas para implementar la misma funcionalidad pero utilizando el método contains de un List en vez de Optional.
 
 
+### Conclusión:
 
+Si solo necesitas verificar la existencia de un producto con el mismo nombre en listas pequeñas, y esta lógica es consistente en toda la aplicación, sobrescribir equals() y usar contains() es una opción más simple y limpia.
 
+Si la lógica de búsqueda varía o necesitas hacer coincidencias parciales, usar stream() con filter() es una mejor opción.
+
+Usar stream() es más flexible, mientras que sobrescribir equals() es más sencillo y directo, pero menos adaptable.
 
 
